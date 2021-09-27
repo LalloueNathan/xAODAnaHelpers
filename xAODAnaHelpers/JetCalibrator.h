@@ -23,6 +23,10 @@
 #include "JetInterface/IJetUpdateJvt.h"
 #include "JetCPInterfaces/IJetTileCorrectionTool.h"
 #include "ParticleJetTools/JetTruthLabelingTool.h"
+#include "InDetTrackSystematicsTools/InDetTrackTruthFilterTool.h"
+#include "InDetTrackSystematicsTools/InDetTrackTruthOriginTool.h"
+#include "InDetTrackSystematicsTools/JetTrackFilterTool.h"
+#include "InDetTrackSelectionTool/InDetTrackSelectionTool.h"
 #include "xAODCore/ShallowCopy.h"
 
 // algorithm wrapper
@@ -80,6 +84,9 @@ public:
   std::string m_overrideAnalysisFile = "";
   /// @brief Override uncertainties path (not recommended)
   std::string m_overrideUncertPath = "";
+
+  /// @brief if true, will apply an uncertainty on the number of tracks inside jets
+  bool m_doJetTrackFilter = false;
 
   /// @brief when running data "_Insitu" is appended to calibration sequence
   bool m_forceInsitu = false;
@@ -154,14 +161,16 @@ private:
   std::vector<CP::SystematicSet> m_systList; //!
 
   // tools
-  asg::AnaToolHandle<IJetCalibrationTool>        m_JetCalibrationTool_handle   {"JetCalibrationTool"   , this}; //!
-  asg::AnaToolHandle<ICPJetUncertaintiesTool>    m_JetUncertaintiesTool_handle {"JetUncertaintiesTool" , this}; //!
-  asg::AnaToolHandle<ICPJetUncertaintiesTool>    m_pseudodataJERTool_handle    {"PseudodataJERTool"    , this}; //!
-  asg::AnaToolHandle<IJetUpdateJvt>              m_JVTUpdateTool_handle        {"JetVertexTaggerTool"  , this}; //!
-  asg::AnaToolHandle<IJetModifier>               m_fJVTTool_handle             {"JetForwardJvtTool"    , this}; //!
-  asg::AnaToolHandle<IJetSelector>               m_JetCleaningTool_handle      {"JetCleaningTool"      , this}; //!
-  asg::AnaToolHandle<CP::IJetTileCorrectionTool> m_JetTileCorrectionTool_handle{"JetTileCorrectionTool", this}; //!
-  asg::AnaToolHandle<JetTruthLabelingTool>       m_JetTruthLabelingTool_handle {"JetTruthLabelingTool" , this}; //!
+  asg::AnaToolHandle<IJetCalibrationTool>               m_JetCalibrationTool_handle    {"JetCalibrationTool"              , this}; //!
+  asg::AnaToolHandle<ICPJetUncertaintiesTool>           m_JetUncertaintiesTool_handle  {"JetUncertaintiesTool"            , this}; //!
+  asg::AnaToolHandle<ICPJetUncertaintiesTool>           m_pseudodataJERTool_handle     {"PseudodataJERTool"               , this}; //!
+  asg::AnaToolHandle<IJetUpdateJvt>                     m_JVTUpdateTool_handle         {"JetVertexTaggerTool"             , this}; //!
+  asg::AnaToolHandle<IJetModifier>                      m_fJVTTool_handle              {"JetForwardJvtTool"               , this}; //!
+  asg::AnaToolHandle<IJetSelector>                      m_JetCleaningTool_handle       {"JetCleaningTool"                 , this}; //!
+  asg::AnaToolHandle<CP::IJetTileCorrectionTool>        m_JetTileCorrectionTool_handle {"JetTileCorrectionTool"           , this}; //!
+  asg::AnaToolHandle<JetTruthLabelingTool>              m_JetTruthLabelingTool_handle  {"JetTruthLabelingTool"            , this}; //!
+  asg::AnaToolHandle<InDet::IInDetTrackTruthOriginTool> m_originTool                   {"InDetTrackTruthOriginTool", this}; //!
+  asg::AnaToolHandle<InDet::JetTrackFilterTool>	        m_JetTrackFilterTool_handle    {"JetTrackFilterTool"              , this}; //!
 
   std::vector<asg::AnaToolHandle<IJetSelector>>  m_AllJetCleaningTool_handles; //!
   std::vector<std::string>  m_decisionNames;    //!

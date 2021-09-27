@@ -40,6 +40,10 @@
 #include "JetMomentTools/JetVertexTaggerTool.h"
 #include "JetTileCorrection/JetTileCorrectionTool.h"
 #include "METUtilities/METHelpers.h"
+#include "InDetTrackSystematicsTools/InDetTrackTruthFilterTool.h"
+#include "InDetTrackSystematicsTools/InDetTrackTruthOriginTool.h"
+#include "InDetTrackSystematicsTools/JetTrackFilterTool.h"
+#include "InDetTrackSelectionTool/InDetTrackSelectionTool.h"
 
 // this is needed to distribute the algorithm to the workers
 ClassImp(JetCalibrator)
@@ -341,6 +345,58 @@ EL::StatusCode JetCalibrator :: initialize ()
     ANA_MSG_INFO( "No Jet Uncertainities considered");
   }
 
+  // initialize and configure the jet track filter tool
+  // only initialize if the boolean is turned to true
+  //------------------------------------------------
+  if ( m_doJetTrackFilter && !m_systName.empty() && m_systName != "None" ) {
+
+    ANA_MSG_INFO("Initialize Track Truth Origin Tool");
+    ANA_CHECK( ASG_MAKE_ANA_TOOL(m_originTool, InDet::InDetTrackTruthOriginTool));
+    ANA_CHECK( m_originTool.retrieve());	
+
+    ANA_MSG_INFO("Initialize Jet Track Filter Tool");
+    ANA_CHECK( ASG_MAKE_ANA_TOOL(m_JetTrackFilterTool_handle, InDet::JetTrackFilterTool));
+    ANA_CHECK( m_JetTrackFilterTool_handle.setProperty("trackOriginTool", m_originTool));
+    ANA_CHECK( m_JetTrackFilterTool_handle.retrieve());
+    //
+    // Get a list of recommended systematics for this tool
+    //
+    ANA_MSG_INFO(" Initializing Jet Systematics :");
+    const CP::SystematicSet jetTrackSysts = m_JetTrackFilterTool_handle->recommendedSystematics();
+
+    //If just one systVal, then push it to the vector
+    ANA_CHECK( this->parseSystValVector());
+    if( m_systValVector.size() == 0) {
+      ANA_MSG_DEBUG("Pushing the following systVal to m_systValVector: " << m_systVal );
+      m_systValVector.push_back(m_systVal);
+    }
+
+    for(unsigned int iSyst=0; iSyst < m_systValVector.size(); ++iSyst){
+      std::vector<CP::SystematicSet> sysList = HelperFunctions::getListofSystematics( jetTrackSysts, m_systName, m_systValVector.at(iSyst), msg() );
+
+      for(unsigned int i=0; i < sysList.size(); ++i){
+        // do not add another nominal syst to the list!!
+        // CP::SystematicSet() creates an empty systematic set, compared to the set at index i
+        if (sysList.at(i).empty() || sysList.at(i) == CP::SystematicSet() ) { ANA_MSG_INFO("sysList Empty at index " << i); continue; }
+        m_systList.push_back( sysList.at(i) );
+      }
+    }
+
+    // Setup the tool for the 1st systematic on the list
+    // If running all, the tool will be setup for each syst on each event
+    if ( !m_systList.empty() ) {
+      m_runSysts = true;
+      // setup track systematics tool for systematic evaluation
+      if ( m_JetTrackFilterTool_handle->applySystematicVariation(m_systList.at(0)) != CP::SystematicCode::Ok ) {
+        ANA_MSG_ERROR( "Cannot configure JetTrackFilterTool for systematic " << m_systName);
+        return EL::StatusCode::FAILURE;
+      }
+    }
+  } // running systematics
+  else {
+    ANA_MSG_INFO( "No Jet Track Systematics considered");
+  }
+
   // initialize and configure the JVT correction tool
 
   if( m_redoJVT ){
@@ -554,6 +610,7 @@ EL::StatusCode JetCalibrator::executeSystematic(const CP::SystematicSet& thisSys
 
   std::string outSCContainerName, outSCAuxContainerName, outContainerName;
   asg::AnaToolHandle<ICPJetUncertaintiesTool>* jetUncTool(nullptr);
+  asg::AnaToolHandle<InDet::JetTrackFilterTool>* jetTrackFilterTool(nullptr);
 
   // always append the name of the variation, including nominal which is an empty string
   if(isPDCopy){
@@ -569,6 +626,7 @@ EL::StatusCode JetCalibrator::executeSystematic(const CP::SystematicSet& thisSys
     outContainerName      = m_outContainerName+thisSyst.name();
     vecOutContainerNames.push_back(thisSyst.name());
     jetUncTool = &m_JetUncertaintiesTool_handle;
+    jetTrackFilterTool = &m_JetTrackFilterTool_handle;
   }
 
   // create shallow copy;
@@ -597,6 +655,12 @@ EL::StatusCode JetCalibrator::executeSystematic(const CP::SystematicSet& thisSys
         ANA_MSG_ERROR( "JetUncertaintiesTool reported a CP::CorrectionCode::Error");
         ANA_MSG_ERROR( m_name );
       }
+    }
+
+    ANA_MSG_DEBUG("Configure for systematic variation : " << thisSyst.name());
+    if ( (*jetTrackFilterTool)->applySystematicVariation(thisSyst) != CP::SystematicCode::Ok ) {
+      ANA_MSG_ERROR( "Cannot configure JetTrackFilterTool for systematic " << m_systName);
+      return EL::StatusCode::FAILURE;
     }
 
   }// if m_runSysts

@@ -74,6 +74,9 @@ atlas_depends_on_subdirs( PUBLIC
                           Trigger/TrigAnalysis/TrigDecisionTool
                           Trigger/TrigAnalysis/TriggerMatchingTool
                           Trigger/TrigConfiguration/TrigConfxAOD
+			  InnerDetector/InDetRecTools/InDetTrackSelectionTool
+			  InnerDetector/InDetRecTools/TrackVertexAssociationTool
+			  PhysicsAnalysis/TrackingID/InDetTrackSystematicsTools
                           ${release_depends}
 )
 
@@ -108,6 +111,7 @@ atlas_add_library( xAODAnaHelpersLib xAODAnaHelpers/*.h Root/*.h Root/*.cxx ${xA
                    TrigDecisionToolLib xAODCutFlow JetMomentToolsLib
                    TriggerMatchingToolLib xAODMetaDataCnv xAODMetaData
                    JetJvtEfficiencyLib PMGToolsLib JetSubStructureUtils JetTileCorrectionLib BoostedJetTaggersLib
+		   InDetTrackSystematicsToolsLib InDetTrackSelectionToolLib TrackVertexAssociationToolLib
                    ${release_libs}
 )
 
