@@ -25,6 +25,7 @@ using std::vector;
 // needed? should it be here?
 #ifdef __MAKECINT__
 #pragma link C++ class vector<float>+;
+#pragma link C++ class vector<vector<ROOT::Math::LorentzVector<ROOT::Math::PtEtaPhiM4D<double> > > >+;
 #endif
 
 HelpTreeBase::HelpTreeBase(xAOD::TEvent* event, TTree* tree, TFile* file, const float units, bool debug, xAOD::TStore* store):
@@ -860,24 +861,24 @@ void HelpTreeBase::AddTruthFatJets(const std::string& detailStr, const std::stri
 }
 
 
-void HelpTreeBase::FillFatJets( const xAOD::JetContainer* fatJets , int pvLocation, const std::string& fatjetName, const std::string& suffix ) {
+void HelpTreeBase::FillFatJets( const xAOD::JetContainer* fatJets , int pvLocation, const std::string& fatjetName, const std::string& suffix, const std::string& systName ) {
 
   this->ClearFatJets(fatjetName, suffix);
 
   for( auto fatjet_itr : *fatJets ) {
 
-    this->FillFatJet(fatjet_itr, pvLocation, fatjetName, suffix);
+    this->FillFatJet(fatjet_itr, pvLocation, fatjetName, suffix, systName);
 
   } // loop over fat jets
 
 }
 
-void HelpTreeBase::FillFatJet( const xAOD::Jet* fatjet_itr, int pvLocation, const std::string& fatjetName, const std::string& suffix ) {
+void HelpTreeBase::FillFatJet( const xAOD::Jet* fatjet_itr, int pvLocation, const std::string& fatjetName, const std::string& suffix, const std::string& systName ) {
 
   const std::string& collectionName = FatJetCollectionName(fatjetName, suffix);
   xAH::FatJetContainer* thisFatJet = m_fatjets[collectionName];
 
-  thisFatJet->FillFatJet(fatjet_itr, pvLocation);
+  thisFatJet->FillFatJet(fatjet_itr, pvLocation, systName);
 
   this->FillFatJetsUser(fatjet_itr, pvLocation, fatjetName, suffix);
 

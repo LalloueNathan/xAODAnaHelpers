@@ -4,6 +4,8 @@
 #include "xAODAnaHelpers/Particle.h"
 #include "xAODAnaHelpers/Jet.h"
 
+#include "Math/Vector4D.h"
+
 namespace xAH {
 
   class FatJet : public Particle
@@ -48,6 +50,7 @@ namespace xAH {
       int    NClusters;
       int    nTracks;
       int    ungrtrk500;
+      //std::vector<ROOT::Math::PtEtaPhiMVector> tracks_fourVec;
       float  EMFrac;
       int    nChargedParticles;
 

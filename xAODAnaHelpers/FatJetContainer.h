@@ -16,6 +16,7 @@
 #include <xAODAnaHelpers/ParticleContainer.h>
 #include <xAODAnaHelpers/JetContainer.h>
 
+#include "Math/Vector4D.h"
 
 namespace xAH {
 
@@ -29,8 +30,8 @@ namespace xAH {
       virtual void setTree    (TTree *tree);
       virtual void setBranches(TTree *tree);
       virtual void clear();
-      virtual void FillFatJet( const xAOD::Jet* jet           , int pvLocation=0 );
-      virtual void FillFatJet( const xAOD::IParticle* particle, int pvLocation=0 );
+      virtual void FillFatJet( const xAOD::Jet* jet           , int pvLocation=0, const std::string& systName = "");
+      virtual void FillFatJet( const xAOD::IParticle* particle, int pvLocation=0, const std::string& systName = "");
       using ParticleContainer::setTree; // make other overloaded version of execute() to show up in subclass
 
       float       m_trackJetPtCut  =10e3; // slimming pT cut on associated track jets
@@ -90,6 +91,7 @@ namespace xAH {
       std::vector<int>   *m_NClusters;
       std::vector<int>   *m_nTracks;
       std::vector<int>   *m_ungrtrk500;
+      //std::vector<std::vector<ROOT::Math::PtEtaPhiMVector>> *m_tracks_fourVec;
       std::vector<float> *m_EMFrac;
       std::vector<int>   *m_nChargedParticles;
 

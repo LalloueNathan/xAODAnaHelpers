@@ -555,7 +555,7 @@ EL::StatusCode TreeAlgo :: execute ()
 
         const xAOD::JetContainer* inFatJets(nullptr);
         ANA_CHECK( HelperFunctions::retrieve(inFatJets, m_fatJetContainers.at(ll)+fatJetSuffix, m_event, m_store, msg()) );
-        helpTree->FillFatJets( inFatJets, HelperFunctions::getPrimaryVertexLocation(vertices, msg()), m_fatJetBranches.at(ll) );
+        helpTree->FillFatJets( inFatJets, HelperFunctions::getPrimaryVertexLocation(vertices, msg()), m_fatJetBranches.at(ll), "", systName);
 
       }
 

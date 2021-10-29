@@ -10,6 +10,8 @@
 #ifndef xAODAnaHelpers_JetCalibrator_H
 #define xAODAnaHelpers_JetCalibrator_H
 
+#include "Math/Vector4D.h"
+
 // CP interface includes
 #include "PATInterfaces/SystematicRegistry.h"
 #include "PATInterfaces/SystematicSet.h"
@@ -27,6 +29,9 @@
 #include "InDetTrackSystematicsTools/InDetTrackTruthOriginTool.h"
 #include "InDetTrackSystematicsTools/JetTrackFilterTool.h"
 #include "InDetTrackSelectionTool/InDetTrackSelectionTool.h"
+#include "TrackVertexAssociationTool/TrackVertexAssociationTool.h"
+#include "InDetTrackSystematicsTools/InDetTrackSmearingTool.h"
+#include "InDetTrackSystematicsTools/InDetTrackBiasingTool.h"
 #include "xAODCore/ShallowCopy.h"
 
 // algorithm wrapper
@@ -87,6 +92,10 @@ public:
 
   /// @brief if true, will apply an uncertainty on the number of tracks inside jets
   bool m_doJetTrackFilter = false;
+  /// @brief cut Level for the track selection tool
+  std::string m_trkSelection_CutLevel = "";
+  /// @brief workingPoint of the TrackVertexAssociationTool
+  std::string m_TrackVertexAssociation_workingPoint = "";
 
   /// @brief when running data "_Insitu" is appended to calibration sequence
   bool m_forceInsitu = false;
@@ -161,16 +170,22 @@ private:
   std::vector<CP::SystematicSet> m_systList; //!
 
   // tools
-  asg::AnaToolHandle<IJetCalibrationTool>               m_JetCalibrationTool_handle    {"JetCalibrationTool"              , this}; //!
-  asg::AnaToolHandle<ICPJetUncertaintiesTool>           m_JetUncertaintiesTool_handle  {"JetUncertaintiesTool"            , this}; //!
-  asg::AnaToolHandle<ICPJetUncertaintiesTool>           m_pseudodataJERTool_handle     {"PseudodataJERTool"               , this}; //!
-  asg::AnaToolHandle<IJetUpdateJvt>                     m_JVTUpdateTool_handle         {"JetVertexTaggerTool"             , this}; //!
-  asg::AnaToolHandle<IJetModifier>                      m_fJVTTool_handle              {"JetForwardJvtTool"               , this}; //!
-  asg::AnaToolHandle<IJetSelector>                      m_JetCleaningTool_handle       {"JetCleaningTool"                 , this}; //!
-  asg::AnaToolHandle<CP::IJetTileCorrectionTool>        m_JetTileCorrectionTool_handle {"JetTileCorrectionTool"           , this}; //!
-  asg::AnaToolHandle<JetTruthLabelingTool>              m_JetTruthLabelingTool_handle  {"JetTruthLabelingTool"            , this}; //!
-  asg::AnaToolHandle<InDet::IInDetTrackTruthOriginTool> m_originTool                   {"InDetTrackTruthOriginTool", this}; //!
-  asg::AnaToolHandle<InDet::JetTrackFilterTool>	        m_JetTrackFilterTool_handle    {"JetTrackFilterTool"              , this}; //!
+  asg::AnaToolHandle<IJetCalibrationTool>                 m_JetCalibrationTool_handle    {"JetCalibrationTool"              , this}; //!
+  asg::AnaToolHandle<ICPJetUncertaintiesTool>             m_JetUncertaintiesTool_handle  {"JetUncertaintiesTool"            , this}; //!
+  asg::AnaToolHandle<ICPJetUncertaintiesTool>             m_pseudodataJERTool_handle     {"PseudodataJERTool"               , this}; //!
+  asg::AnaToolHandle<IJetUpdateJvt>                       m_JVTUpdateTool_handle         {"JetVertexTaggerTool"             , this}; //!
+  asg::AnaToolHandle<IJetModifier>                        m_fJVTTool_handle              {"JetForwardJvtTool"               , this}; //!
+  asg::AnaToolHandle<IJetSelector>                        m_JetCleaningTool_handle       {"JetCleaningTool"                 , this}; //!
+  asg::AnaToolHandle<CP::IJetTileCorrectionTool>          m_JetTileCorrectionTool_handle {"JetTileCorrectionTool"           , this}; //!
+  asg::AnaToolHandle<JetTruthLabelingTool>                m_JetTruthLabelingTool_handle  {"JetTruthLabelingTool"            , this}; //!
+
+  asg::AnaToolHandle<InDet::InDetTrackSelectionTool>      m_TrackSelTool_handle          {"InDetTrackSelectionTool"         , this}; //!
+  asg::AnaToolHandle<CP::TrackVertexAssociationTool>      m_TrktoVxTool_handle           {"TrackVertexAssociationTool"      , this}; //!
+  asg::AnaToolHandle<InDet::IInDetTrackTruthOriginTool>   m_originTool                   {"InDetTrackTruthOriginTool"       , this}; //!
+  asg::AnaToolHandle<InDet::JetTrackFilterTool>	          m_JetTrackFilterTool_handle    {"JetTrackFilterTool"              , this}; //!
+  asg::AnaToolHandle<InDet::InDetTrackSmearingTool>       m_TrackSmearingTool_handle     {"TrackSmearingTool"               , this}; //!
+  asg::AnaToolHandle<InDet::InDetTrackBiasingTool>        m_TrackBiasingTool_handle      {"TrackBiasingTool"                , this}; //!
+  asg::AnaToolHandle<InDet::InDetTrackTruthFilterTool>    m_TrackTruthFilterTool_handle  {"TrackTruthFilterTool"            , this}; //!
 
   std::vector<asg::AnaToolHandle<IJetSelector>>  m_AllJetCleaningTool_handles; //!
   std::vector<std::string>  m_decisionNames;    //!

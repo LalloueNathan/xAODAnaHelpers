@@ -3,6 +3,8 @@
 #include <iostream>
 #include "xAODTruth/TruthEventContainer.h"
 
+#include "Math/Vector4D.h"
+
 using namespace xAH;
 
 FatJetContainer::FatJetContainer(const std::string& name, const std::string& detailStr, const std::string& subjetDetailStr, const std::string& suffix,
@@ -50,6 +52,7 @@ FatJetContainer::FatJetContainer(const std::string& name, const std::string& det
     m_NClusters         = new std::vector<int>  ();
     m_nTracks           = new std::vector<int>  ();
     m_ungrtrk500	= new std::vector<int>  ();
+    //m_tracks_fourVec    = new std::vector<std::vector<ROOT::Math::PtEtaPhiMVector>>  ();
     m_EMFrac		= new std::vector<float>();
     m_nChargedParticles = new std::vector<int>();
   }
@@ -149,6 +152,7 @@ FatJetContainer::~FatJetContainer()
     delete m_NClusters   ;
     delete m_nTracks   ;
     delete m_ungrtrk500		;
+    //delete m_tracks_fourVec     ;
     delete m_EMFrac		;
     delete m_nChargedParticles	;
   }
@@ -249,6 +253,7 @@ void FatJetContainer::setTree(TTree *tree)
     connectBranch<int>  (tree, "Nclusters",    &m_NClusters);
     connectBranch<int>  (tree, "nTracks",      &m_nTracks);
     connectBranch<int>  (tree, "ungrtrk500",		&m_ungrtrk500);
+    //connectBranch<std::vector<ROOT::Math::PtEtaPhiMVector>>  (tree, "tracks_fourVec",        &m_tracks_fourVec);
     connectBranch<float>(tree, "EMFrac",		&m_EMFrac);
     connectBranch<int>  (tree, "nChargedParticles",	&m_nChargedParticles);
   }
@@ -347,6 +352,7 @@ void FatJetContainer::updateParticle(uint idx, FatJet& fatjet)
     fatjet.NClusters    = m_NClusters   ->at(idx);
     fatjet.nTracks      = m_nTracks     ->at(idx);
     fatjet.ungrtrk500		= m_ungrtrk500  	->at(idx);
+    //fatjet.tracks_fourVec       = m_tracks_fourVec      ->at(idx);
     fatjet.EMFrac		= m_EMFrac		->at(idx);
     fatjet.nChargedParticles	= m_nChargedParticles	->at(idx);
   }
@@ -452,6 +458,7 @@ void FatJetContainer::setBranches(TTree *tree)
     setBranch<int>  (tree, "Nclusters",    m_NClusters);
     setBranch<int>  (tree, "nTracks",      m_nTracks);
     setBranch<int>  (tree, "ungrtrk500",   	m_ungrtrk500);
+    //setBranch<std::vector<ROOT::Math::PtEtaPhiMVector>>  (tree, "tracks_fourVec",    m_tracks_fourVec); 
     setBranch<float>(tree, "EMFrac",	   	m_EMFrac);
     setBranch<int>  (tree, "nChargedParticles",	m_nChargedParticles);
   }
@@ -547,6 +554,7 @@ void FatJetContainer::clear()
     m_NClusters   ->clear();
     m_nTracks     ->clear();
     m_ungrtrk500  	->clear();
+    //m_tracks_fourVec    ->clear();
     m_EMFrac	  	->clear();
     m_nChargedParticles	->clear();
   }
@@ -597,11 +605,11 @@ void FatJetContainer::clear()
   return;
 }
 
-void FatJetContainer::FillFatJet( const xAOD::Jet* jet, int pvLocation ){
-  return FillFatJet(static_cast<const xAOD::IParticle*>(jet), pvLocation);
+void FatJetContainer::FillFatJet( const xAOD::Jet* jet, int pvLocation, const std::string& systName ){
+  return FillFatJet(static_cast<const xAOD::IParticle*>(jet), pvLocation, systName);
 }
 
-void FatJetContainer::FillFatJet( const xAOD::IParticle* particle, int pvLocation ){
+void FatJetContainer::FillFatJet( const xAOD::IParticle* particle, int pvLocation, const std::string& systName ){
 
   ParticleContainer::FillParticle(particle);
 
@@ -713,30 +721,38 @@ void FatJetContainer::FillFatJet( const xAOD::IParticle* particle, int pvLocatio
       m_nTracks->push_back( acc_GhostTrackCount( *fatjet ));
     } else { m_nTracks->push_back(-999); }
 
-    static SG::AuxElement::ConstAccessor<ElementLink<xAOD::JetContainer>> acc_parent("Parent");
-    if (acc_parent.isAvailable(*fatjet)) {
-      ElementLink<xAOD::JetContainer> fatjetParentLink = acc_parent(*fatjet);
-      if (fatjetParentLink.isValid()) {
-        const xAOD::Jet* fatjetParent {*fatjetParentLink};
-        static SG::AuxElement::ConstAccessor< std::vector<int> > acc_NumTrkPt500("NumTrkPt500");
-        if ( acc_NumTrkPt500.isAvailable( *fatjetParent ) ) {
-          m_ungrtrk500->push_back( acc_NumTrkPt500( *fatjetParent )[pvLocation] );
-        } else { 
-	  //Perhaps the case if we are dealing with reclustered jets
-	  int sumUngrtrk500 = 0;
-	  const xAOD::Jet* subjet(nullptr);
-	  for(auto constit: fatjet->getConstituents()){
-            subjet = static_cast<const xAOD::Jet*>(constit->rawConstituent());
-            if (subjet->type() != xAOD::Type::Jet) continue;
-	    if ( acc_NumTrkPt500.isAvailable( *subjet ) ) sumUngrtrk500+=acc_NumTrkPt500( *subjet )[pvLocation];
-	  }
-          m_ungrtrk500->push_back( sumUngrtrk500 );
-        }
-      } else {
+    if(std::string(systName).rfind("TRK", 0) == 0){
+	static SG::AuxElement::ConstAccessor< std::vector<int> > acc_NumTrkPt500("NumTrkPt500");
+        m_ungrtrk500->push_back( acc_NumTrkPt500( *fatjet )[0]);
+        //static SG::AuxElement::ConstAccessor<std::vector<ROOT::Math::PtEtaPhiMVector>> tracks_fourVec("tracks_p4_"+systName);
+        //m_tracks_fourVec->push_back( tracks_fourVec( *fatjet ));
+    }
+    else{
+	static SG::AuxElement::ConstAccessor<ElementLink<xAOD::JetContainer>> acc_parent("Parent");
+        if (acc_parent.isAvailable(*fatjet)) {
+                ElementLink<xAOD::JetContainer> fatjetParentLink = acc_parent(*fatjet);
+                if (fatjetParentLink.isValid()) {
+                        const xAOD::Jet* fatjetParent {*fatjetParentLink};
+                        static SG::AuxElement::ConstAccessor< std::vector<int> > acc_NumTrkPt500("NumTrkPt500");
+                        if ( acc_NumTrkPt500.isAvailable( *fatjetParent ) ) {
+                                m_ungrtrk500->push_back( acc_NumTrkPt500( *fatjetParent )[pvLocation] );
+                        } else {
+                                //Perhaps the case if we are dealing with reclustered jets
+                                int sumUngrtrk500 = 0;
+                                const xAOD::Jet* subjet(nullptr);
+                                for(auto constit: fatjet->getConstituents()){
+                                        subjet = static_cast<const xAOD::Jet*>(constit->rawConstituent());
+                                        if (subjet->type() != xAOD::Type::Jet) continue;
+                                        if ( acc_NumTrkPt500.isAvailable( *subjet ) ) sumUngrtrk500+=acc_NumTrkPt500( *subjet )[pvLocation];
+                                }
+                                m_ungrtrk500->push_back( sumUngrtrk500 );
+                        }
+                } else {
+                        m_ungrtrk500->push_back(-999);
+                }
+	} else {
         m_ungrtrk500->push_back(-999);
-      }
-    } else {
-      m_ungrtrk500->push_back(-999);
+        }
     }
 
     m_EMFrac->push_back(GetEMFrac (*fatjet));

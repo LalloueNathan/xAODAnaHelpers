@@ -32,6 +32,7 @@
 
 // ROOT includes:
 #include "TSystem.h"
+#include "Math/Vector4D.h"
 
 // tools
 #include "JetCalibTools/JetCalibrationTool.h"
@@ -44,6 +45,9 @@
 #include "InDetTrackSystematicsTools/InDetTrackTruthOriginTool.h"
 #include "InDetTrackSystematicsTools/JetTrackFilterTool.h"
 #include "InDetTrackSelectionTool/InDetTrackSelectionTool.h"
+#include "TrackVertexAssociationTool/TrackVertexAssociationTool.h"
+#include "InDetTrackSystematicsTools/InDetTrackSmearingTool.h"
+#include "InDetTrackSystematicsTools/InDetTrackBiasingTool.h"
 
 // this is needed to distribute the algorithm to the workers
 ClassImp(JetCalibrator)
@@ -123,6 +127,10 @@ EL::StatusCode JetCalibrator :: initialize ()
   m_store = wk()->xaodStore();
 
   ANA_MSG_INFO( "Number of events in file: " << m_event->getEntries() );
+
+  const xAOD::EventInfo* eventInfo = 0;
+  if( !m_event->retrieve( eventInfo, "EventInfo" ).isSuccess()) return EL::StatusCode::FAILURE;
+  uint32_t rn = eventInfo->runNumber();
 
   // If there is no InputContainer we must stop
   if ( m_inContainerName.empty() ) {
@@ -357,41 +365,126 @@ EL::StatusCode JetCalibrator :: initialize ()
     ANA_MSG_INFO("Initialize Jet Track Filter Tool");
     ANA_CHECK( ASG_MAKE_ANA_TOOL(m_JetTrackFilterTool_handle, InDet::JetTrackFilterTool));
     ANA_CHECK( m_JetTrackFilterTool_handle.setProperty("trackOriginTool", m_originTool));
+    ANA_CHECK( m_JetTrackFilterTool_handle.setProperty("Seed", 1234 )); 
     ANA_CHECK( m_JetTrackFilterTool_handle.retrieve());
-    //
-    // Get a list of recommended systematics for this tool
-    //
-    ANA_MSG_INFO(" Initializing Jet Systematics :");
-    const CP::SystematicSet jetTrackSysts = m_JetTrackFilterTool_handle->recommendedSystematics();
 
-    //If just one systVal, then push it to the vector
+    ANA_MSG_INFO("Initialize Track Smearing Tool");
+    ANA_CHECK( ASG_MAKE_ANA_TOOL(m_TrackSmearingTool_handle, InDet::InDetTrackSmearingTool));
+    ANA_CHECK( m_TrackSmearingTool_handle.setProperty("Seed", 1234 ));
+    ANA_CHECK( m_TrackSmearingTool_handle.setProperty("runNumber", rn ));
+    ANA_CHECK( m_TrackSmearingTool_handle.retrieve());
+
+    ANA_MSG_INFO("Initialize Track Biasing Tool");
+    ANA_CHECK( ASG_MAKE_ANA_TOOL(m_TrackBiasingTool_handle, InDet::InDetTrackBiasingTool));
+    ANA_CHECK( m_TrackBiasingTool_handle.setProperty("runNumber", rn ));
+    ANA_CHECK( m_TrackBiasingTool_handle.retrieve());
+
+    ANA_MSG_INFO("Initialize Track Truth Filter Tool");
+    ANA_CHECK( ASG_MAKE_ANA_TOOL(m_TrackTruthFilterTool_handle, InDet::InDetTrackTruthFilterTool));
+    ANA_CHECK( m_TrackTruthFilterTool_handle.setProperty("trackOriginTool", m_originTool));
+    ANA_CHECK( m_TrackTruthFilterTool_handle.setProperty("Seed", 1234 ));
+    ANA_CHECK( m_TrackTruthFilterTool_handle.retrieve());
+
+    ANA_MSG_INFO("Initialize Track Selection Tool");
+    ANA_CHECK( ASG_MAKE_ANA_TOOL( m_TrackSelTool_handle, InDet::InDetTrackSelectionTool));
+    ANA_CHECK( m_TrackSelTool_handle.setProperty( "CutLevel", m_trkSelection_CutLevel ) );
+    ANA_CHECK( m_TrackSelTool_handle.retrieve());
+    
+    ANA_MSG_INFO("Initialize Track Vertex Association Tool");
+    ANA_CHECK( ASG_MAKE_ANA_TOOL( m_TrktoVxTool_handle, CP::TrackVertexAssociationTool));
+    ANA_CHECK( m_TrktoVxTool_handle.setProperty( "WorkingPoint", m_TrackVertexAssociation_workingPoint ));
+    ANA_CHECK( m_TrktoVxTool_handle.retrieve());
+
+    ANA_MSG_INFO(" Initializing Track Systematics :");
+
+    const CP::SystematicSet jetTrackSysts = m_JetTrackFilterTool_handle->recommendedSystematics();
     ANA_CHECK( this->parseSystValVector());
     if( m_systValVector.size() == 0) {
       ANA_MSG_DEBUG("Pushing the following systVal to m_systValVector: " << m_systVal );
       m_systValVector.push_back(m_systVal);
     }
-
     for(unsigned int iSyst=0; iSyst < m_systValVector.size(); ++iSyst){
       std::vector<CP::SystematicSet> sysList = HelperFunctions::getListofSystematics( jetTrackSysts, m_systName, m_systValVector.at(iSyst), msg() );
-
       for(unsigned int i=0; i < sysList.size(); ++i){
-        // do not add another nominal syst to the list!!
-        // CP::SystematicSet() creates an empty systematic set, compared to the set at index i
+	if (sysList.at(i).name().find("TIGHT")!=std::string::npos) { continue; }
         if (sysList.at(i).empty() || sysList.at(i) == CP::SystematicSet() ) { ANA_MSG_INFO("sysList Empty at index " << i); continue; }
         m_systList.push_back( sysList.at(i) );
       }
     }
-
-    // Setup the tool for the 1st systematic on the list
-    // If running all, the tool will be setup for each syst on each event
     if ( !m_systList.empty() ) {
       m_runSysts = true;
-      // setup track systematics tool for systematic evaluation
       if ( m_JetTrackFilterTool_handle->applySystematicVariation(m_systList.at(0)) != CP::SystematicCode::Ok ) {
         ANA_MSG_ERROR( "Cannot configure JetTrackFilterTool for systematic " << m_systName);
         return EL::StatusCode::FAILURE;
       }
     }
+
+    const CP::SystematicSet trackSmearingSysts = m_TrackSmearingTool_handle->recommendedSystematics();
+    ANA_CHECK( this->parseSystValVector());
+    if( m_systValVector.size() == 0) {
+      ANA_MSG_DEBUG("Pushing the following systVal to m_systValVector: " << m_systVal );
+      m_systValVector.push_back(m_systVal);
+    }
+    for(unsigned int iSyst=0; iSyst < m_systValVector.size(); ++iSyst){
+      std::vector<CP::SystematicSet> sysList = HelperFunctions::getListofSystematics( trackSmearingSysts, m_systName, m_systValVector.at(iSyst), msg() );
+      for(unsigned int i=0; i < sysList.size(); ++i){
+	if (sysList.at(i).name().find("TIGHT")!=std::string::npos) { continue; }
+        if (sysList.at(i).empty() || sysList.at(i) == CP::SystematicSet() ) { ANA_MSG_INFO("sysList Empty at index " << i); continue; }
+        //m_systList.push_back( sysList.at(i) ); //Nathan
+      }
+    }
+    if ( !m_systList.empty() ) {
+      m_runSysts = true;
+      if ( m_TrackSmearingTool_handle->applySystematicVariation(m_systList.at(0)) != CP::SystematicCode::Ok ) {
+        ANA_MSG_ERROR( "Cannot configure TrackSmearingTool for systematic " << m_systName);
+        return EL::StatusCode::FAILURE;
+      }
+    }
+
+    const CP::SystematicSet trackBiasingSysts = m_TrackBiasingTool_handle->recommendedSystematics();
+    ANA_CHECK( this->parseSystValVector());
+    if( m_systValVector.size() == 0) {
+      ANA_MSG_DEBUG("Pushing the following systVal to m_systValVector: " << m_systVal );
+      m_systValVector.push_back(m_systVal);
+    }
+    for(unsigned int iSyst=0; iSyst < m_systValVector.size(); ++iSyst){
+      std::vector<CP::SystematicSet> sysList = HelperFunctions::getListofSystematics( trackBiasingSysts, m_systName, m_systValVector.at(iSyst), msg() );
+      for(unsigned int i=0; i < sysList.size(); ++i){
+	if (sysList.at(i).name().find("TIGHT")!=std::string::npos) { continue; }
+        if (sysList.at(i).empty() || sysList.at(i) == CP::SystematicSet() ) { ANA_MSG_INFO("sysList Empty at index " << i); continue; }
+        //m_systList.push_back( sysList.at(i) ); //Nathan
+      }
+    }
+    if ( !m_systList.empty() ) {
+      m_runSysts = true;
+      if ( m_TrackBiasingTool_handle->applySystematicVariation(m_systList.at(0)) != CP::SystematicCode::Ok ) {
+        ANA_MSG_ERROR( "Cannot configure TrackBiasingTool for systematic " << m_systName);
+        return EL::StatusCode::FAILURE;
+      }
+    }
+
+    const CP::SystematicSet trackTruthFilterSysts = m_TrackTruthFilterTool_handle->recommendedSystematics();
+    ANA_CHECK( this->parseSystValVector());
+    if( m_systValVector.size() == 0) {
+      ANA_MSG_DEBUG("Pushing the following systVal to m_systValVector: " << m_systVal );
+      m_systValVector.push_back(m_systVal);
+    }
+    for(unsigned int iSyst=0; iSyst < m_systValVector.size(); ++iSyst){
+      std::vector<CP::SystematicSet> sysList = HelperFunctions::getListofSystematics( trackTruthFilterSysts, m_systName, m_systValVector.at(iSyst), msg() );
+      for(unsigned int i=0; i < sysList.size(); ++i){
+	if (sysList.at(i).name().find("TIGHT")!=std::string::npos) { continue; }
+        if (sysList.at(i).empty() || sysList.at(i) == CP::SystematicSet() ) { ANA_MSG_INFO("sysList Empty at index " << i); continue; }
+        m_systList.push_back( sysList.at(i) );
+      }
+    }
+    if ( !m_systList.empty() ) {
+      m_runSysts = true;
+      if ( m_TrackTruthFilterTool_handle->applySystematicVariation(m_systList.at(0)) != CP::SystematicCode::Ok ) {
+        ANA_MSG_ERROR( "Cannot configure TrackTruthFilterTool for systematic " << m_systName);
+        return EL::StatusCode::FAILURE;
+      }
+    }
+
   } // running systematics
   else {
     ANA_MSG_INFO( "No Jet Track Systematics considered");
@@ -532,14 +625,207 @@ EL::StatusCode JetCalibrator :: execute ()
   // loop over available systematics - remember syst == "Nominal" --> baseline
   auto vecOutContainerNames = std::make_unique< std::vector< std::string > >();
 
-  for ( const auto& syst_it : m_systList ) {
+  asg::AnaToolHandle<InDet::InDetTrackSelectionTool>* trackSelTool(nullptr);
+  trackSelTool = &m_TrackSelTool_handle;
 
-    executeSystematic(syst_it, inJets, calibJetsSC, *vecOutContainerNames, false);
+  asg::AnaToolHandle<CP::TrackVertexAssociationTool>* trktoVxTool(nullptr);
+  trktoVxTool = &m_TrktoVxTool_handle;
 
-    if(m_mcAndPseudoData && std::string(syst_it.name()).find("JER") != std::string::npos) {
-      // This is a JER uncertainty that also needs a pseudodata copy done.
-      executeSystematic(syst_it, inJets, calibJetsSC, *vecOutContainerNames, true);
+  asg::AnaToolHandle<InDet::JetTrackFilterTool>* jetTrackFilterTool(nullptr);
+  jetTrackFilterTool = &m_JetTrackFilterTool_handle;
+
+  asg::AnaToolHandle<InDet::InDetTrackSmearingTool>* trackSmearingTool(nullptr);
+  trackSmearingTool = &m_TrackSmearingTool_handle;
+
+  asg::AnaToolHandle<InDet::InDetTrackBiasingTool>* trackBiasingTool(nullptr);
+  trackBiasingTool = &m_TrackBiasingTool_handle;
+
+  asg::AnaToolHandle<InDet::InDetTrackTruthFilterTool>* trackTruthFilterTool(nullptr);
+  trackTruthFilterTool = &m_TrackTruthFilterTool_handle;
+
+  const xAOD::VertexContainer* vertices = 0;
+  TString m_vertexContainerName = "PrimaryVertices";
+  if ( !m_event->retrieve( vertices, m_vertexContainerName.Data() ).isSuccess() ){
+    ANA_MSG_ERROR(" Failed to retrieve vertex container ");
+    return EL::StatusCode::FAILURE;
+  }
+
+  xAOD::Vertex* primaryVertex = nullptr;
+  if(vertices->size()==1){ // special case, or else there are problems
+      primaryVertex = *vertices->cbegin();
+  }
+  else{
+      const auto it_pv = std::find_if(vertices->cbegin(), vertices->cend(),[](const xAOD::Vertex* vtx){return vtx->vertexType() == xAOD::VxType::PriVtx;});
+      primaryVertex = (it_pv == vertices->cend()) ? nullptr : *it_pv;
+  }
+
+  for ( const auto& sysListItr : m_systList ) {
+
+    if(sysListItr.name().rfind("TRK", 0) == 0){
+
+	if(sysListItr.name().find("TIGHT")!=std::string::npos){
+                ANA_MSG_DEBUG(" Skip the tight working points "  );
+                continue;
+        }
+
+	std::string syst = "";
+	
+	if( sysListItr.name().find("TIDE") != std::string::npos){
+                if( (*jetTrackFilterTool)->applySystematicVariation( sysListItr ) == CP::SystematicCode::Ok ) {
+                        syst = "jetTrackFilterTool";
+                }
+                else{
+                        ANA_MSG_ERROR( " Cannot configure track systematic tools for systematic: " <<  sysListItr.name());
+                        return EL::StatusCode::FAILURE;
+                }
+        }
+	else if ( sysListItr.name().find("RES") != std::string::npos){
+             	if( (*trackSmearingTool)->applySystematicVariation( sysListItr ) == CP::SystematicCode::Ok ) {
+                        syst = "trackSmearingTool";
+                }
+                else{
+                        ANA_MSG_ERROR( " Cannot configure track systematic tools for systematic: " <<  sysListItr.name());
+                        return EL::StatusCode::FAILURE;
+                }
+        }
+        else if ( sysListItr.name().find("BIAS") != std::string::npos){
+                if( (*trackBiasingTool)->applySystematicVariation( sysListItr ) == CP::SystematicCode::Ok ) {
+                        syst = "trackBiasingTool";
+                }
+                else{
+                        ANA_MSG_ERROR( " Cannot configure track systematic tools for systematic: " <<  sysListItr.name());
+                        return EL::StatusCode::FAILURE;
+                }
+        }
+        else{
+                if( (*trackTruthFilterTool)->applySystematicVariation( sysListItr ) == CP::SystematicCode::Ok ) {
+                        syst = "trackTruthFilterTool";
+                }
+                else{
+                        ANA_MSG_ERROR( " Cannot configure track systematic tools for systematic: " <<  sysListItr.name());
+                        return EL::StatusCode::FAILURE;
+                }
+        }
+
+	std::string outSCContainerName    = m_outContainerName+sysListItr.name()+"ShallowCopy";
+        std::string outSCAuxContainerName = m_outContainerName+sysListItr.name()+"ShallowCopyAux.";
+        std::string outContainerName	  = m_outContainerName+sysListItr.name();
+
+        vecOutContainerNames->push_back(sysListItr.name());
+
+        std::pair< xAOD::JetContainer*, xAOD::ShallowAuxContainer* > jets_shallowCopy = xAOD::shallowCopyContainer( *calibJetsSC.first );
+
+        ConstDataVector<xAOD::JetContainer>* myManipulatedJets = new ConstDataVector<xAOD::JetContainer>(SG::VIEW_ELEMENTS);
+        myManipulatedJets->reserve( jets_shallowCopy.first->size() );
+		
+	for(auto jet : *jets_shallowCopy.first){
+
+                if(!jet){
+                        continue;
+                }
+
+                static SG::AuxElement::ConstAccessor<ElementLink<xAOD::JetContainer>> acc_parent("Parent");
+                ElementLink<xAOD::JetContainer> fatjetParentLink = acc_parent(*jet);
+                const xAOD::Jet* fatjetParent {*fatjetParentLink};
+
+                std::vector<const xAOD::IParticle *> trackVector = (fatjetParent)->getAssociatedObjects<xAOD::IParticle>(xAOD::JetAttribute::GhostTrack);
+                std::vector<const xAOD::IParticle *>::const_iterator trkItr;
+
+                int ntracks = 0;
+
+                for (trkItr = trackVector.begin(); trkItr != trackVector.end(); trkItr++){
+
+                        const xAOD::TrackParticle * track = dynamic_cast<const xAOD::TrackParticle *>(*trkItr);
+
+                        if(!track){
+                                continue;
+                        }
+
+                        xAOD::TrackParticle* newTrack = nullptr;
+
+                        if(syst=="jetTrackFilterTool"){
+                                if(!(*jetTrackFilterTool)->accept(track, jet)){
+                                        continue;
+                                }
+                        }
+                        else if (syst=="trackSmearingTool"){
+                                (*trackSmearingTool)->correctedCopy( *track, newTrack);
+                        }
+                        else if (syst=="trackBiasingTool"){
+                                (*trackBiasingTool)->correctedCopy( *track, newTrack);
+                        }
+                        else{
+                             	if(!(*trackTruthFilterTool)->accept(track)){
+                                        continue;
+                                }
+                        }
+			
+			if(syst=="trackSmearingTool" or syst=="trackBiasingTool"){
+
+                                if( ! (*trackSelTool)->accept(*newTrack, primaryVertex) ){
+                                        continue;
+                                }
+
+                                if(!(*trktoVxTool)->isCompatible(*newTrack, *primaryVertex)) {
+                                        continue;
+                                }
+
+                                if(!(newTrack->pt()>500)){
+                                        continue;
+                                }
+
+                        }
+                        else{
+
+                             	if( ! (*trackSelTool)->accept(*track, primaryVertex) ){
+                                        continue;
+                                }
+
+                                if(!(*trktoVxTool)->isCompatible(*track, *primaryVertex)) {
+                                        continue;
+                                }
+				if(!(track->pt()>500)){
+                                        continue;
+                                }
+
+                        }
+
+                        ntracks++;
+                }
+
+                jet->auxdata< std::vector<int> >("NumTrkPt500") = std::vector<int>{ntracks};
+
+        }
+
+	if ( !xAOD::setOriginalObjectLink(*inJets, *(jets_shallowCopy.first)) ) {
+    		ANA_MSG_ERROR( "Failed to set original object links -- MET rebuilding cannot proceed.");
+  	}
+
+	for ( auto jet_itr : *(jets_shallowCopy.first) ) {
+                myManipulatedJets->push_back( jet_itr );
+        }
+
+	if ( m_sort ) {
+                std::sort( myManipulatedJets->begin(), myManipulatedJets->end(), HelperFunctions::sort_pt );
+        }
+
+	ANA_CHECK( m_store->record( jets_shallowCopy.first, outSCContainerName));
+        ANA_CHECK( m_store->record( jets_shallowCopy.second, outSCAuxContainerName));
+
+	ANA_CHECK( m_store->record( myManipulatedJets, outContainerName));	
+
     }
+    else{
+
+	executeSystematic(sysListItr, inJets, calibJetsSC, *vecOutContainerNames, false);
+
+        if(m_mcAndPseudoData && std::string(sysListItr.name()).find("JER") != std::string::npos) {
+        // This is a JER uncertainty that also needs a pseudodata copy done.
+                executeSystematic(sysListItr, inJets, calibJetsSC, *vecOutContainerNames, true);
+        }
+	
+   }
+
   }
 
   // add vector of systematic names to TStore
@@ -610,7 +896,6 @@ EL::StatusCode JetCalibrator::executeSystematic(const CP::SystematicSet& thisSys
 
   std::string outSCContainerName, outSCAuxContainerName, outContainerName;
   asg::AnaToolHandle<ICPJetUncertaintiesTool>* jetUncTool(nullptr);
-  asg::AnaToolHandle<InDet::JetTrackFilterTool>* jetTrackFilterTool(nullptr);
 
   // always append the name of the variation, including nominal which is an empty string
   if(isPDCopy){
@@ -626,7 +911,6 @@ EL::StatusCode JetCalibrator::executeSystematic(const CP::SystematicSet& thisSys
     outContainerName      = m_outContainerName+thisSyst.name();
     vecOutContainerNames.push_back(thisSyst.name());
     jetUncTool = &m_JetUncertaintiesTool_handle;
-    jetTrackFilterTool = &m_JetTrackFilterTool_handle;
   }
 
   // create shallow copy;
@@ -655,12 +939,6 @@ EL::StatusCode JetCalibrator::executeSystematic(const CP::SystematicSet& thisSys
         ANA_MSG_ERROR( "JetUncertaintiesTool reported a CP::CorrectionCode::Error");
         ANA_MSG_ERROR( m_name );
       }
-    }
-
-    ANA_MSG_DEBUG("Configure for systematic variation : " << thisSyst.name());
-    if ( (*jetTrackFilterTool)->applySystematicVariation(thisSyst) != CP::SystematicCode::Ok ) {
-      ANA_MSG_ERROR( "Cannot configure JetTrackFilterTool for systematic " << m_systName);
-      return EL::StatusCode::FAILURE;
     }
 
   }// if m_runSysts
