@@ -368,16 +368,16 @@ EL::StatusCode JetCalibrator :: initialize ()
     ANA_CHECK( m_JetTrackFilterTool_handle.setProperty("Seed", 1234 )); 
     ANA_CHECK( m_JetTrackFilterTool_handle.retrieve());
 
-    ANA_MSG_INFO("Initialize Track Smearing Tool");
-    ANA_CHECK( ASG_MAKE_ANA_TOOL(m_TrackSmearingTool_handle, InDet::InDetTrackSmearingTool));
-    ANA_CHECK( m_TrackSmearingTool_handle.setProperty("Seed", 1234 ));
-    ANA_CHECK( m_TrackSmearingTool_handle.setProperty("runNumber", rn ));
-    ANA_CHECK( m_TrackSmearingTool_handle.retrieve());
+    //ANA_MSG_INFO("Initialize Track Smearing Tool");
+    //ANA_CHECK( ASG_MAKE_ANA_TOOL(m_TrackSmearingTool_handle, InDet::InDetTrackSmearingTool));
+    //ANA_CHECK( m_TrackSmearingTool_handle.setProperty("Seed", 1234 ));
+    //ANA_CHECK( m_TrackSmearingTool_handle.setProperty("runNumber", rn ));
+    //ANA_CHECK( m_TrackSmearingTool_handle.retrieve());
 
-    ANA_MSG_INFO("Initialize Track Biasing Tool");
-    ANA_CHECK( ASG_MAKE_ANA_TOOL(m_TrackBiasingTool_handle, InDet::InDetTrackBiasingTool));
-    ANA_CHECK( m_TrackBiasingTool_handle.setProperty("runNumber", rn ));
-    ANA_CHECK( m_TrackBiasingTool_handle.retrieve());
+    //ANA_MSG_INFO("Initialize Track Biasing Tool");
+    //ANA_CHECK( ASG_MAKE_ANA_TOOL(m_TrackBiasingTool_handle, InDet::InDetTrackBiasingTool));
+    //ANA_CHECK( m_TrackBiasingTool_handle.setProperty("runNumber", rn ));
+    //ANA_CHECK( m_TrackBiasingTool_handle.retrieve());
 
     ANA_MSG_INFO("Initialize Track Truth Filter Tool");
     ANA_CHECK( ASG_MAKE_ANA_TOOL(m_TrackTruthFilterTool_handle, InDet::InDetTrackTruthFilterTool));
@@ -419,6 +419,7 @@ EL::StatusCode JetCalibrator :: initialize ()
       }
     }
 
+    /*
     const CP::SystematicSet trackSmearingSysts = m_TrackSmearingTool_handle->recommendedSystematics();
     ANA_CHECK( this->parseSystValVector());
     if( m_systValVector.size() == 0) {
@@ -440,7 +441,9 @@ EL::StatusCode JetCalibrator :: initialize ()
         return EL::StatusCode::FAILURE;
       }
     }
+    //*/
 
+    /*
     const CP::SystematicSet trackBiasingSysts = m_TrackBiasingTool_handle->recommendedSystematics();
     ANA_CHECK( this->parseSystValVector());
     if( m_systValVector.size() == 0) {
@@ -462,6 +465,7 @@ EL::StatusCode JetCalibrator :: initialize ()
         return EL::StatusCode::FAILURE;
       }
     }
+    //*/
 
     const CP::SystematicSet trackTruthFilterSysts = m_TrackTruthFilterTool_handle->recommendedSystematics();
     ANA_CHECK( this->parseSystValVector());
@@ -474,7 +478,7 @@ EL::StatusCode JetCalibrator :: initialize ()
       for(unsigned int i=0; i < sysList.size(); ++i){
 	if (sysList.at(i).name().find("TIGHT")!=std::string::npos) { continue; }
         if (sysList.at(i).empty() || sysList.at(i) == CP::SystematicSet() ) { ANA_MSG_INFO("sysList Empty at index " << i); continue; }
-        m_systList.push_back( sysList.at(i) );
+        //m_systList.push_back( sysList.at(i) );
       }
     }
     if ( !m_systList.empty() ) {
@@ -634,11 +638,13 @@ EL::StatusCode JetCalibrator :: execute ()
   asg::AnaToolHandle<InDet::JetTrackFilterTool>* jetTrackFilterTool(nullptr);
   jetTrackFilterTool = &m_JetTrackFilterTool_handle;
 
+  /*
   asg::AnaToolHandle<InDet::InDetTrackSmearingTool>* trackSmearingTool(nullptr);
   trackSmearingTool = &m_TrackSmearingTool_handle;
 
   asg::AnaToolHandle<InDet::InDetTrackBiasingTool>* trackBiasingTool(nullptr);
   trackBiasingTool = &m_TrackBiasingTool_handle;
+  //*/
 
   asg::AnaToolHandle<InDet::InDetTrackTruthFilterTool>* trackTruthFilterTool(nullptr);
   trackTruthFilterTool = &m_TrackTruthFilterTool_handle;
@@ -679,6 +685,7 @@ EL::StatusCode JetCalibrator :: execute ()
                         return EL::StatusCode::FAILURE;
                 }
         }
+	/*
 	else if ( sysListItr.name().find("RES") != std::string::npos){
              	if( (*trackSmearingTool)->applySystematicVariation( sysListItr ) == CP::SystematicCode::Ok ) {
                         syst = "trackSmearingTool";
@@ -697,6 +704,7 @@ EL::StatusCode JetCalibrator :: execute ()
                         return EL::StatusCode::FAILURE;
                 }
         }
+	//*/
         else{
                 if( (*trackTruthFilterTool)->applySystematicVariation( sysListItr ) == CP::SystematicCode::Ok ) {
                         syst = "trackTruthFilterTool";
@@ -748,12 +756,14 @@ EL::StatusCode JetCalibrator :: execute ()
                                         continue;
                                 }
                         }
+			/*
                         else if (syst=="trackSmearingTool"){
                                 (*trackSmearingTool)->correctedCopy( *track, newTrack);
                         }
                         else if (syst=="trackBiasingTool"){
                                 (*trackBiasingTool)->correctedCopy( *track, newTrack);
                         }
+			//*/
                         else{
                              	if(!(*trackTruthFilterTool)->accept(track)){
                                         continue;
