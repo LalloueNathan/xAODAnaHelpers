@@ -63,6 +63,8 @@
 #pragma link off all functions;
 #pragma link C++ nestedclass;
 
+#pragma link C++ class vector<vector<ROOT::Math::LorentzVector<ROOT::Math::PtEtaPhiM4D<double> > > >+;
+
 #pragma link C++ namespace xAH;
 #pragma link C++ function xAH::addRucio;
 
