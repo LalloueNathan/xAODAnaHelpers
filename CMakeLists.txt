@@ -83,6 +83,8 @@ atlas_depends_on_subdirs( PUBLIC
 
 # Find the needed external(s):
 find_package( ROOT COMPONENTS Core RIO Hist Tree )
+ 
+find_package( Lhapdf )
 
 # build a dictionary for the library
 atlas_add_root_dictionary ( xAODAnaHelpersLib xAODAnaHelpersDictSource
@@ -94,7 +96,8 @@ atlas_add_root_dictionary ( xAODAnaHelpersLib xAODAnaHelpersDictSource
 atlas_add_library( xAODAnaHelpersLib xAODAnaHelpers/*.h Root/*.h Root/*.cxx ${xAODAnaHelpersDictSource}
                    PUBLIC_HEADERS xAODAnaHelpers
                    INCLUDE_DIRS ${ROOT_INCLUDE_DIRS}
-                   LINK_LIBRARIES ${ROOT_LIBRARIES} EventLoop xAODBase xAODRootAccess
+		   INCLUDE_DIRS ${LHAPDF_INCLUDE_DIRS}	
+                   LINK_LIBRARIES ${ROOT_LIBRARIES} ${LHAPDF_LIBRARIES} EventLoop xAODBase xAODRootAccess
                    xAODEventInfo GoodRunsListsLib PileupReweightingLib PATInterfaces
                    PathResolver xAODTau xAODJet xAODMuon xAODEgamma
                    xAODTracking xAODTruth MuonMomentumCorrectionsLib

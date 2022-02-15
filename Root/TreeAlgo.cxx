@@ -45,6 +45,9 @@ EL::StatusCode TreeAlgo :: initialize ()
   treeFile->mkdir(m_name.c_str());
   treeFile->cd(m_name.c_str());
 
+  const LHAPDF::PDFSet tmp_pdf_Set("NNPDF23_lo_as_0119_qed");
+  m_pdfs = tmp_pdf_Set.mkPDFs(); // pointers to PDF set members
+
   // to handle more than one jet collections (reco, trig and truth)
   std::string token;
   std::istringstream ss_reco_containers(m_jetContainerName);
@@ -421,7 +424,7 @@ EL::StatusCode TreeAlgo :: execute ()
     if (std::find(fatJetSystNames.begin(), fatJetSystNames.end(), systName) != fatJetSystNames.end()) fatJetSuffix = systName;
     if (std::find(metSystNames.begin(), metSystNames.end(), systName) != metSystNames.end()) metSuffix = systName;
 
-    helpTree->FillEvent( eventInfo, m_event, vertices );
+    helpTree->FillEvent( eventInfo, m_event, vertices, m_pdfs );
 
     // Fill trigger information
     if ( !m_trigDetailStr.empty() )    {

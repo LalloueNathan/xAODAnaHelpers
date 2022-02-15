@@ -8,6 +8,9 @@
 // algorithm wrapper
 #include "xAODAnaHelpers/Algorithm.h"
 
+#include "LHAPDF/LHAPDF.h"
+#include "LHAPDF/Reweighting.h"
+
 class TreeAlgo : public xAH::Algorithm
 {
   // put your configuration variables here as public variables.
@@ -106,6 +109,8 @@ protected:
   std::vector<std::string> m_vertexDetails; //!
 
   std::map<std::string, HelpTreeBase*> m_trees;            //!
+
+  std::vector<LHAPDF::PDF*> m_pdfs; 
 
 public:
 

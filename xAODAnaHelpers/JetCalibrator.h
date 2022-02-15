@@ -183,14 +183,14 @@ private:
   asg::AnaToolHandle<CP::TrackVertexAssociationTool>      m_TrktoVxTool_handle           {"TrackVertexAssociationTool"      , this}; //!
   asg::AnaToolHandle<InDet::IInDetTrackTruthOriginTool>   m_originTool                   {"InDetTrackTruthOriginTool"       , this}; //!
   asg::AnaToolHandle<InDet::JetTrackFilterTool>	          m_JetTrackFilterTool_handle    {"JetTrackFilterTool"              , this}; //!
-  asg::AnaToolHandle<InDet::InDetTrackSmearingTool>       m_TrackSmearingTool_handle     {"TrackSmearingTool"               , this}; //!
-  asg::AnaToolHandle<InDet::InDetTrackBiasingTool>        m_TrackBiasingTool_handle      {"TrackBiasingTool"                , this}; //!
-  asg::AnaToolHandle<InDet::InDetTrackTruthFilterTool>    m_TrackTruthFilterTool_handle  {"TrackTruthFilterTool"            , this}; //!
 
   std::vector<asg::AnaToolHandle<IJetSelector>>  m_AllJetCleaningTool_handles; //!
   std::vector<std::string>  m_decisionNames;    //!
 
   // Helper functions
+  EL::StatusCode executeTIDESystematic(const CP::SystematicSet& thisSyst, const xAOD::JetContainer* inJets,
+                                   std::pair<xAOD::JetContainer*, xAOD::ShallowAuxContainer*>& calibJetsSC,
+                                   std::vector<std::string>& vecOutContainerNames, bool isPDCopy);
   EL::StatusCode executeSystematic(const CP::SystematicSet& thisSyst, const xAOD::JetContainer* inJets,
                                    std::pair<xAOD::JetContainer*, xAOD::ShallowAuxContainer*>& calibJetsSC,
                                    std::vector<std::string>& vecOutContainerNames, bool isPDCopy);

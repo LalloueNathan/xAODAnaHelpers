@@ -5,7 +5,6 @@
 #include "xAODEventShape/EventShape.h"
 #include "xAODCaloEvent/CaloClusterContainer.h"
 
-
 using namespace xAH;
 
 EventInfo::EventInfo(const std::string& detailStr, float units, bool mc, bool storeSyst)
@@ -35,6 +34,8 @@ void EventInfo::setTree(TTree *tree)
     connectBranch<float   >(tree, "mcEventWeight",              &m_mcEventWeight);
     if ( m_infoSwitch.m_weightsSys ) {
       connectBranch< std::vector<float> >(tree, "mcEventWeights", &m_mcEventWeights);
+      connectBranch< std::vector<int> >(tree, "pdfEventWeights_names", &m_pdfEventWeights_names);
+      connectBranch< std::vector<float> >(tree, "pdfEventWeights_values", &m_pdfEventWeights_values);
     }
   }
 
@@ -137,6 +138,8 @@ void EventInfo::setBranches(TTree *tree)
     tree->Branch("mcEventWeight",      &m_mcEventWeight,  "mcEventWeight/F");
     if ( m_infoSwitch.m_weightsSys ) {
       tree->Branch("mcEventWeights",   &m_mcEventWeights);
+      tree->Branch("pdfEventWeights_values",   &m_pdfEventWeights_values);
+      tree->Branch("pdfEventWeights_names",   &m_pdfEventWeights_names);
     }
   }
 
@@ -255,6 +258,8 @@ void EventInfo::clear()
   // mcEventWeights
   if ( m_infoSwitch.m_weightsSys ) {
     m_mcEventWeights.clear();
+    m_pdfEventWeights_names.clear();
+    m_pdfEventWeights_values.clear();
   }
 
   // CaloCluster
@@ -268,7 +273,7 @@ void EventInfo::clear()
   return;
 }
 
-void EventInfo::FillEvent( const xAOD::EventInfo* eventInfo, xAOD::TEvent* event, const xAOD::VertexContainer* vertices) {
+void EventInfo::FillEvent( const xAOD::EventInfo* eventInfo, xAOD::TEvent* event, const xAOD::VertexContainer* vertices, const std::vector<LHAPDF::PDF*> pdfs) {
 
   if (!m_infoSwitch.m_noDataInfo){ // saved always (unless specifically requiring not to)
     m_runNumber             = eventInfo->runNumber();
@@ -285,6 +290,19 @@ void EventInfo::FillEvent( const xAOD::EventInfo* eventInfo, xAOD::TEvent* event
     if ( m_infoSwitch.m_weightsSys ) {
       if ( m_storeSyst ) {
         m_mcEventWeights      = eventInfo->mcEventWeights();
+        const xAOD::TruthEventContainer * truthEvents(nullptr);
+        event->retrieve(truthEvents, "TruthEvents");
+        for( const auto *truthEvent : *truthEvents){
+        	xAOD::TruthEvent::PdfInfo pdf_info = truthEvent->pdfInfo();
+            	for (size_t iPDF = 0; iPDF < pdfs.size(); iPDF++){
+              		double pdf_weight = LHAPDF::weightxxQ2( pdf_info.pdgId1, pdf_info.pdgId2, pdf_info.x1, pdf_info.x2, pdf_info.Q, pdfs.at(0), pdfs.at(iPDF) );
+              		if (std::isnan(pdf_weight)){
+				pdf_weight = -1;
+			}
+              		m_pdfEventWeights_values.push_back(pdf_weight);
+			m_pdfEventWeights_names.push_back(pdfs.at(iPDF)->lhapdfID());
+            	}
+        }
       } else {
         m_mcEventWeights      = std::vector<float>{m_mcEventWeight};
       }

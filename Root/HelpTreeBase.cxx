@@ -134,7 +134,7 @@ void HelpTreeBase::AddEvent( const std::string& detailStr ) {
   this->AddEventUser(detailStr);
 }
 
-void HelpTreeBase::FillEvent( const xAOD::EventInfo* eventInfo, xAOD::TEvent* /*event*/, const xAOD::VertexContainer* vertices ) {
+void HelpTreeBase::FillEvent( const xAOD::EventInfo* eventInfo, xAOD::TEvent* /*event*/, const xAOD::VertexContainer* vertices, const std::vector<LHAPDF::PDF*> pdfs) {
 
   this->ClearEvent();
 
@@ -143,7 +143,7 @@ void HelpTreeBase::FillEvent( const xAOD::EventInfo* eventInfo, xAOD::TEvent* /*
     HelperFunctions::retrieve( vertices, m_vertexContainerName, m_event, 0);
   }
 
-  m_eventInfo->FillEvent(eventInfo, m_event, vertices);
+  m_eventInfo->FillEvent(eventInfo, m_event, vertices, pdfs);
 
   this->FillEventUser(eventInfo);
 }

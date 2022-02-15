@@ -53,6 +53,9 @@
 #include "TTree.h"
 #include "TFile.h"
 
+#include "LHAPDF/LHAPDF.h"
+#include "LHAPDF/Reweighting.h"
+
 namespace TrigConf {
   class xAODConfigTool;
 }
@@ -124,7 +127,7 @@ public:
   TrigConf::xAODConfigTool*    m_trigConfTool;
   Trig::TrigDecisionTool*      m_trigDecTool;
 
-  void FillEvent( const xAOD::EventInfo* eventInfo, xAOD::TEvent* event = nullptr, const xAOD::VertexContainer* vertices = nullptr );
+  void FillEvent( const xAOD::EventInfo* eventInfo, xAOD::TEvent* event = nullptr, const xAOD::VertexContainer* vertices = nullptr, const std::vector<LHAPDF::PDF*> pdfs = {} );
 
   void FillTrigger( const xAOD::EventInfo* eventInfo );
   void FillJetTrigger();
