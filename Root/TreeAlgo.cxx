@@ -45,8 +45,14 @@ EL::StatusCode TreeAlgo :: initialize ()
   treeFile->mkdir(m_name.c_str());
   treeFile->cd(m_name.c_str());
 
-  const LHAPDF::PDFSet tmp_pdf_Set("NNPDF23_lo_as_0119_qed");
-  m_pdfs = tmp_pdf_Set.mkPDFs(); // pointers to PDF set members
+  const LHAPDF::PDFSet tmp_pdf_Set_1("NNPDF23_lo_as_0130_qed");
+  m_pdfs_1 = tmp_pdf_Set_1.mkPDFs(); // pointers to PDF set members
+  const LHAPDF::PDFSet tmp_pdf_Set_2("NNPDF23_lo_as_0119_qed");
+  m_pdfs_2 = tmp_pdf_Set_2.mkPDFs(); // pointers to PDF set members
+  const LHAPDF::PDFSet tmp_pdf_Set_3("CT14llo");
+  m_pdfs_3 = tmp_pdf_Set_3.mkPDFs(); // pointers to PDF set members
+  const LHAPDF::PDFSet tmp_pdf_Set_4("MMHT2014lo68cl");
+  m_pdfs_4 = tmp_pdf_Set_4.mkPDFs(); // pointers to PDF set members
 
   // to handle more than one jet collections (reco, trig and truth)
   std::string token;
@@ -424,7 +430,7 @@ EL::StatusCode TreeAlgo :: execute ()
     if (std::find(fatJetSystNames.begin(), fatJetSystNames.end(), systName) != fatJetSystNames.end()) fatJetSuffix = systName;
     if (std::find(metSystNames.begin(), metSystNames.end(), systName) != metSystNames.end()) metSuffix = systName;
 
-    helpTree->FillEvent( eventInfo, m_event, vertices, m_pdfs );
+    helpTree->FillEvent( eventInfo, m_event, vertices, m_pdfs_1, m_pdfs_2, m_pdfs_3, m_pdfs_4 );
 
     // Fill trigger information
     if ( !m_trigDetailStr.empty() )    {

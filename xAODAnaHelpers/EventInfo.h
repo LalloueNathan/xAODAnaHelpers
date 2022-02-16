@@ -23,7 +23,7 @@ namespace xAH {
     void setTree    (TTree *tree);
     void setBranches(TTree *tree);
     void clear();
-    void FillEvent( const xAOD::EventInfo* eventInfo, xAOD::TEvent* event = nullptr, const xAOD::VertexContainer* vertices = nullptr, const std::vector<LHAPDF::PDF*> pdfs = {} );
+    void FillEvent( const xAOD::EventInfo* eventInfo, xAOD::TEvent* event = nullptr, const xAOD::VertexContainer* vertices = nullptr, const std::vector<LHAPDF::PDF*> pdfs_1 = {}, const std::vector<LHAPDF::PDF*> pdfs_2 = {}, const std::vector<LHAPDF::PDF*> pdfs_3 = {}, const std::vector<LHAPDF::PDF*> pdfs_4 = {} );
     template <typename T_BR>
       void connectBranch(TTree *tree, std::string name, T_BR *variable);
 
@@ -54,8 +54,14 @@ namespace xAH {
     int      m_mcChannelNumber;
     float    m_mcEventWeight;
     std::vector<float> m_mcEventWeights;
-    std::vector<float> m_pdfEventWeights_values;
-    std::vector<int> m_pdfEventWeights_names;
+    std::vector<float> m_pdfEventWeights_values_1;
+    std::vector<int> m_pdfEventWeights_names_1;
+    std::vector<float> m_pdfEventWeights_values_2;
+    std::vector<int> m_pdfEventWeights_names_2;
+    std::vector<float> m_pdfEventWeights_values_3;
+    std::vector<int> m_pdfEventWeights_names_3;
+    std::vector<float> m_pdfEventWeights_values_4;
+    std::vector<int> m_pdfEventWeights_names_4;
     float    m_weight_pileup;
     float    m_weight_pileup_up;
     float    m_weight_pileup_down;

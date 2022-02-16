@@ -32,7 +32,6 @@
 
 // ROOT includes:
 #include "TSystem.h"
-#include "Math/Vector4D.h"
 
 // tools
 #include "JetCalibTools/JetCalibrationTool.h"
@@ -127,9 +126,6 @@ EL::StatusCode JetCalibrator :: initialize ()
   m_store = wk()->xaodStore();
 
   ANA_MSG_INFO( "Number of events in file: " << m_event->getEntries() );
-
-  const xAOD::EventInfo* eventInfo = 0;
-  if( !m_event->retrieve( eventInfo, "EventInfo" ).isSuccess()) return EL::StatusCode::FAILURE;
 
   // If there is no InputContainer we must stop
   if ( m_inContainerName.empty() ) {
@@ -661,16 +657,10 @@ EL::StatusCode JetCalibrator::executeTIDESystematic(const CP::SystematicSet& thi
     ANA_MSG_ERROR(" Failed to retrieve vertex container ");
     return EL::StatusCode::FAILURE;
   }
+ 
+  int pvLocation = HelperFunctions::getPrimaryVertexLocation(vertices);
+  const xAOD::Vertex* primaryVertex = vertices->at(pvLocation);
 
-  xAOD::Vertex* primaryVertex = nullptr;
-  if(vertices->size()==1){ // special case, or else there are problems
-      primaryVertex = *vertices->cbegin();
-  }
-  else{
-      const auto it_pv = std::find_if(vertices->cbegin(), vertices->cend(),[](const xAOD::Vertex* vtx){return vtx->vertexType() == xAOD::VxType::PriVtx;});
-      primaryVertex = (it_pv == vertices->cend()) ? nullptr : *it_pv;
-  }
-   	
   if ( m_runSysts ) {
 
     // TIDE Systematic
@@ -680,13 +670,14 @@ EL::StatusCode JetCalibrator::executeTIDESystematic(const CP::SystematicSet& thi
       return EL::StatusCode::FAILURE;
     }
 
+    static SG::AuxElement::ConstAccessor<ElementLink<xAOD::JetContainer>> acc_parent("Parent");
+
     for(auto jet : *(uncertCalibJetsSC.first)){
 
     	if(!jet){
         	continue;
         }
 
-        static SG::AuxElement::ConstAccessor<ElementLink<xAOD::JetContainer>> acc_parent("Parent");
         ElementLink<xAOD::JetContainer> fatjetParentLink = acc_parent(*jet);
         const xAOD::Jet* fatjetParent {*fatjetParentLink};
 

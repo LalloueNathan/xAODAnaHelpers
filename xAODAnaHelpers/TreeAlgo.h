@@ -110,7 +110,10 @@ protected:
 
   std::map<std::string, HelpTreeBase*> m_trees;            //!
 
-  std::vector<LHAPDF::PDF*> m_pdfs; 
+  std::vector<LHAPDF::PDF*> m_pdfs_1; 
+  std::vector<LHAPDF::PDF*> m_pdfs_2;
+  std::vector<LHAPDF::PDF*> m_pdfs_3;
+  std::vector<LHAPDF::PDF*> m_pdfs_4;
 
 public:
 
