@@ -373,6 +373,12 @@ EL::StatusCode JetCalibrator :: initialize ()
     ANA_CHECK( m_TrktoVxTool_handle.setProperty( "WorkingPoint", m_TrackVertexAssociation_workingPoint ));
     ANA_CHECK( m_TrktoVxTool_handle.retrieve());
 
+    ANA_MSG_INFO("Initialize Track Truth Filter Tool");
+    ANA_CHECK( ASG_MAKE_ANA_TOOL(m_TrackTruthFilterTool_handle, InDet::InDetTrackTruthFilterTool));
+    ANA_CHECK( m_TrackTruthFilterTool_handle.setProperty("trackOriginTool", m_originTool));
+    ANA_CHECK( m_TrackTruthFilterTool_handle.setProperty("Seed", 1234 ));
+    ANA_CHECK( m_TrackTruthFilterTool_handle.retrieve());
+
     ANA_MSG_INFO(" Initializing Track Systematics :");
 
     const CP::SystematicSet jetTrackSysts = m_JetTrackFilterTool_handle->recommendedSystematics();
@@ -393,6 +399,29 @@ EL::StatusCode JetCalibrator :: initialize ()
       m_runSysts = true;
       if ( m_JetTrackFilterTool_handle->applySystematicVariation(m_systList.at(0)) != CP::SystematicCode::Ok ) {
         ANA_MSG_ERROR( "Cannot configure JetTrackFilterTool for systematic " << m_systName);
+        return EL::StatusCode::FAILURE;
+      }
+    }
+
+    const CP::SystematicSet trackTruthFilterSysts = m_TrackTruthFilterTool_handle->recommendedSystematics();
+    ANA_CHECK( this->parseSystValVector());
+    if( m_systValVector.size() == 0) {
+      ANA_MSG_DEBUG("Pushing the following systVal to m_systValVector: " << m_systVal );
+      m_systValVector.push_back(m_systVal);
+    }
+    for(unsigned int iSyst=0; iSyst < m_systValVector.size(); ++iSyst){
+      std::vector<CP::SystematicSet> sysList = HelperFunctions::getListofSystematics( trackTruthFilterSysts, m_systName, m_systValVector.at(iSyst), msg() );
+      for(unsigned int i=0; i < sysList.size(); ++i){
+        if (sysList.at(i).name().find("TIGHT")!=std::string::npos) { continue; }
+	if (sysList.at(i).name().find("FAKE")!=std::string::npos) { continue; }
+        if (sysList.at(i).empty() || sysList.at(i) == CP::SystematicSet() ) { ANA_MSG_INFO("sysList Empty at index " << i); continue; }
+        m_systList.push_back( sysList.at(i) );
+      }
+    }
+    if ( !m_systList.empty() ) {
+      m_runSysts = true;
+      if ( m_TrackTruthFilterTool_handle->applySystematicVariation(m_systList.at(0)) != CP::SystematicCode::Ok ) {
+        ANA_MSG_ERROR( "Cannot configure TrackTruthFilterTool for systematic " << m_systName);
         return EL::StatusCode::FAILURE;
       }
     }
@@ -546,8 +575,12 @@ EL::StatusCode JetCalibrator :: execute ()
                 continue;
         }
 
-        executeTIDESystematic(sysListItr, inJets, calibJetsSC, *vecOutContainerNames, false);	
-
+	if(sysListItr.name().find("TIDE")!=std::string::npos){
+        	executeTIDESystematic(sysListItr, inJets, calibJetsSC, *vecOutContainerNames, false);	
+	}
+	else{
+		executeTruthTrackSystematic(sysListItr, inJets, calibJetsSC, *vecOutContainerNames, false);
+	}
     }
     else{
 
@@ -620,6 +653,154 @@ EL::StatusCode JetCalibrator :: histFinalize ()
   ANA_MSG_INFO( "Calling histFinalize");
   ANA_CHECK( xAH::Algorithm::algFinalize());
   return EL::StatusCode::SUCCESS;
+}
+
+EL::StatusCode JetCalibrator::executeTruthTrackSystematic(const CP::SystematicSet& thisSyst, const xAOD::JetContainer* inJets,
+                                                std::pair<xAOD::JetContainer*, xAOD::ShallowAuxContainer*>& calibJetsSC,
+                                                std::vector<std::string>& vecOutContainerNames, bool isPDCopy){
+
+  bool nominal = thisSyst.name().empty();
+
+  std::string outSCContainerName, outSCAuxContainerName, outContainerName;
+  asg::AnaToolHandle<InDet::InDetTrackTruthFilterTool>* trackTruthFilterTool(nullptr);
+
+  if(isPDCopy){
+    outSCContainerName    = m_outContainerName+thisSyst.name()+"_PDShallowCopy";
+    outSCAuxContainerName = m_outContainerName+thisSyst.name()+"_PDShallowCopyAux.";
+    outContainerName      = m_outContainerName+thisSyst.name()+"_PD";
+    vecOutContainerNames.push_back(thisSyst.name()+"_PD");
+    trackTruthFilterTool = &m_TrackTruthFilterTool_handle;
+  }
+  else{
+    outSCContainerName    = m_outContainerName+thisSyst.name()+"ShallowCopy";
+    outSCAuxContainerName = m_outContainerName+thisSyst.name()+"ShallowCopyAux.";
+    outContainerName      = m_outContainerName+thisSyst.name();
+    vecOutContainerNames.push_back(thisSyst.name());
+    trackTruthFilterTool = &m_TrackTruthFilterTool_handle;
+  }
+
+  // create shallow copy;
+  std::pair< xAOD::JetContainer*, xAOD::ShallowAuxContainer* > uncertCalibJetsSC = nominal ? calibJetsSC : xAOD::shallowCopyContainer(*calibJetsSC.first);
+  ConstDataVector<xAOD::JetContainer>* uncertCalibJetsCDV = new ConstDataVector<xAOD::JetContainer>(SG::VIEW_ELEMENTS);
+  uncertCalibJetsCDV->reserve( uncertCalibJetsSC.first->size() );
+
+  const xAOD::VertexContainer* vertices = 0;
+  TString m_vertexContainerName = "PrimaryVertices";
+  if ( !m_event->retrieve( vertices, m_vertexContainerName.Data() ).isSuccess() ){
+    ANA_MSG_ERROR(" Failed to retrieve vertex container ");
+    return EL::StatusCode::FAILURE;
+  }
+
+  int pvLocation = HelperFunctions::getPrimaryVertexLocation(vertices);
+  const xAOD::Vertex* primaryVertex = vertices->at(pvLocation);
+
+  if ( m_runSysts ) {
+
+    // TIDE Systematic
+    ANA_MSG_DEBUG("Configure for systematic variation : " << thisSyst.name());
+    if ( (*trackTruthFilterTool)->applySystematicVariation(thisSyst) != CP::SystematicCode::Ok ) {
+      ANA_MSG_ERROR( "Cannot configure track systematic tool for systematic " << m_systName);
+      return EL::StatusCode::FAILURE;
+    }
+
+    static SG::AuxElement::ConstAccessor<ElementLink<xAOD::JetContainer>> acc_parent("Parent");
+
+    for(auto jet : *(uncertCalibJetsSC.first)){
+
+    	if(!jet){
+        	continue;
+        }
+
+        ElementLink<xAOD::JetContainer> fatjetParentLink = acc_parent(*jet);
+        const xAOD::Jet* fatjetParent {*fatjetParentLink};
+
+        std::vector<const xAOD::IParticle *> trackVector = (fatjetParent)->getAssociatedObjects<xAOD::IParticle>(xAOD::JetAttribute::GhostTrack);
+        std::vector<const xAOD::IParticle *>::const_iterator trkItr;
+
+        int ntracks = 0;
+
+        for (trkItr = trackVector.begin(); trkItr != trackVector.end(); trkItr++){
+
+        	const xAOD::TrackParticle * track = dynamic_cast<const xAOD::TrackParticle *>(*trkItr);
+
+                if(!track){
+                	continue;
+                }
+
+		if(!(track->pt()>500)){
+                        continue;
+                }
+
+                if(!(m_TrackSelTool_handle->accept(*track, primaryVertex))){
+                	continue;
+                }
+
+                if(!(m_TrktoVxTool_handle->isCompatible(*track, *primaryVertex))){
+                	continue;
+              	}
+
+		if(!(*trackTruthFilterTool)->accept(track)){
+                        continue;
+                }
+
+                ntracks++;
+	}
+
+        jet->auxdata< std::vector<int> >("NumTrkPt500") = std::vector<int>{ntracks};
+
+    }
+
+  }
+
+  if(m_doCleaning){
+    // decorate with cleaning decision
+    for ( auto jet_itr : *(uncertCalibJetsSC.first) ) {
+
+      static SG::AuxElement::Decorator< int > isCleanDecor( "cleanJet" );
+      const xAOD::Jet* jetToClean = jet_itr;
+
+      if(m_cleanParent){
+        ElementLink<xAOD::JetContainer> el_parent = jet_itr->auxdata<ElementLink<xAOD::JetContainer> >("Parent") ;
+        if(!el_parent.isValid())
+          ANA_MSG_ERROR( "Could not make jet cleaning decision on the parent! It doesn't exist.");
+        else
+          jetToClean = *el_parent;
+      }
+
+      isCleanDecor(*jet_itr) = m_JetCleaningTool_handle->keep(*jetToClean);
+
+      if( m_saveAllCleanDecisions ){
+        for(unsigned int i=0; i < m_AllJetCleaningTool_handles.size() ; ++i){
+          jet_itr->auxdata< int >(("clean_pass"+m_decisionNames.at(i)).c_str()) = m_AllJetCleaningTool_handles.at(i)->keep(*jetToClean);
+        }
+      }
+    } //end cleaning decision
+  }
+
+  if ( !xAOD::setOriginalObjectLink(*inJets, *(uncertCalibJetsSC.first)) ) {
+    ANA_MSG_ERROR( "Failed to set original object links -- MET rebuilding cannot proceed.");
+  }
+
+  // save pointers in ConstDataVector with same order
+  for ( auto jet_itr : *(uncertCalibJetsSC.first) ) {
+    uncertCalibJetsCDV->push_back( jet_itr );
+  }
+
+  // can only sort the CDV - a bit no-no to sort the shallow copies
+  if ( m_sort ) {
+    std::sort( uncertCalibJetsCDV->begin(), uncertCalibJetsCDV->end(), HelperFunctions::sort_pt );
+  }
+
+  // add shallow copy to TStore
+  if(!nominal){ // nominal is always saved outside of systematics loop
+    ANA_CHECK( m_store->record( uncertCalibJetsSC.first, outSCContainerName));
+    ANA_CHECK( m_store->record( uncertCalibJetsSC.second, outSCAuxContainerName));
+  }
+  // add ConstDataVector to TStore
+  ANA_CHECK( m_store->record( uncertCalibJetsCDV, outContainerName));
+
+  return EL::StatusCode::SUCCESS;
+
 }
 
 EL::StatusCode JetCalibrator::executeTIDESystematic(const CP::SystematicSet& thisSyst, const xAOD::JetContainer* inJets,

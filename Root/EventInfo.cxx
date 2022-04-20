@@ -34,14 +34,12 @@ void EventInfo::setTree(TTree *tree)
     connectBranch<float   >(tree, "mcEventWeight",              &m_mcEventWeight);
     if ( m_infoSwitch.m_weightsSys ) {
       connectBranch< std::vector<float> >(tree, "mcEventWeights", &m_mcEventWeights);
-      connectBranch< std::vector<int> >(tree, "pdfEventWeights_names_NNPDF23_lo_as_0130_qed", &m_pdfEventWeights_names_1);
       connectBranch< std::vector<float> >(tree, "pdfEventWeights_values_NNPDF23_lo_as_0130_qed", &m_pdfEventWeights_values_1);
-      connectBranch< std::vector<int> >(tree, "pdfEventWeights_names_NNPDF23_lo_as_0119_qed", &m_pdfEventWeights_names_2);
       connectBranch< std::vector<float> >(tree, "pdfEventWeights_values_NNPDF23_lo_as_0119_qed", &m_pdfEventWeights_values_2);
-      connectBranch< std::vector<int> >(tree, "pdfEventWeights_names_CT14llo", &m_pdfEventWeights_names_3);
-      connectBranch< std::vector<float> >(tree, "pdfEventWeights_values_CT14llo", &m_pdfEventWeights_values_3);
-      connectBranch< std::vector<int> >(tree, "pdfEventWeights_names_MMHT2014lo68cl", &m_pdfEventWeights_names_4);
-      connectBranch< std::vector<float> >(tree, "pdfEventWeights_values_MMHT2014lo68cl", &m_pdfEventWeights_values_4);
+      connectBranch< std::vector<float> >(tree, "pdfEventWeights_values_NNPDF30_nlo_as_0118", &m_pdfEventWeights_values_3);
+      connectBranch< std::vector<float> >(tree, "pdfEventWeights_values_NNPDF30_nlo_as_0119", &m_pdfEventWeights_values_4);
+      connectBranch< std::vector<float> >(tree, "pdfEventWeights_values_NNPDF30_nlo_as_0117", &m_pdfEventWeights_values_5);
+      connectBranch< std::vector<float> >(tree, "pdfEventWeights_values_NNPDF30_nlo_as_0118_mc", &m_pdfEventWeights_values_6);
     }
   }
 
@@ -145,13 +143,11 @@ void EventInfo::setBranches(TTree *tree)
     if ( m_infoSwitch.m_weightsSys ) {
       tree->Branch("mcEventWeights",   &m_mcEventWeights);
       tree->Branch("pdfEventWeights_values_NNPDF23_lo_as_0130_qed", &m_pdfEventWeights_values_1);
-      tree->Branch("pdfEventWeights_names_NNPDF23_lo_as_0130_qed", &m_pdfEventWeights_names_1);
       tree->Branch("pdfEventWeights_values_NNPDF23_lo_as_0119_qed", &m_pdfEventWeights_values_2);
-      tree->Branch("pdfEventWeights_names_NNPDF23_lo_as_0119_qed", &m_pdfEventWeights_names_2); 
-      tree->Branch("pdfEventWeights_values_CT14llo", &m_pdfEventWeights_values_3);
-      tree->Branch("pdfEventWeights_names_CT14llo", &m_pdfEventWeights_names_3);
-      tree->Branch("pdfEventWeights_values_MMHT2014lo68cl", &m_pdfEventWeights_values_4);
-      tree->Branch("pdfEventWeights_names_MMHT2014lo68cl", &m_pdfEventWeights_names_4);
+      tree->Branch("pdfEventWeights_values_NNPDF30_nlo_as_0118", &m_pdfEventWeights_values_3);
+      tree->Branch("pdfEventWeights_values_NNPDF30_nlo_as_0119", &m_pdfEventWeights_values_4);
+      tree->Branch("pdfEventWeights_values_NNPDF30_nlo_as_0117", &m_pdfEventWeights_values_5);
+      tree->Branch("pdfEventWeights_values_NNPDF30_nlo_as_0118_mc", &m_pdfEventWeights_values_6);
     }
   }
 
@@ -270,14 +266,12 @@ void EventInfo::clear()
   // mcEventWeights
   if ( m_infoSwitch.m_weightsSys ) {
     m_mcEventWeights.clear();
-    m_pdfEventWeights_names_1.clear();
     m_pdfEventWeights_values_1.clear();
-    m_pdfEventWeights_names_2.clear();
     m_pdfEventWeights_values_2.clear();
-    m_pdfEventWeights_names_3.clear();
     m_pdfEventWeights_values_3.clear();
-    m_pdfEventWeights_names_4.clear();
     m_pdfEventWeights_values_4.clear();
+    m_pdfEventWeights_values_5.clear();
+    m_pdfEventWeights_values_6.clear();
   }
 
   // CaloCluster
@@ -291,7 +285,7 @@ void EventInfo::clear()
   return;
 }
 
-void EventInfo::FillEvent( const xAOD::EventInfo* eventInfo, xAOD::TEvent* event, const xAOD::VertexContainer* vertices, const std::vector<LHAPDF::PDF*> pdfs_1, const std::vector<LHAPDF::PDF*> pdfs_2, const std::vector<LHAPDF::PDF*> pdfs_3, const std::vector<LHAPDF::PDF*> pdfs_4) {
+void EventInfo::FillEvent( const xAOD::EventInfo* eventInfo, xAOD::TEvent* event, const xAOD::VertexContainer* vertices, const std::vector<LHAPDF::PDF*> pdfs_1, const std::vector<LHAPDF::PDF*> pdfs_2, const std::vector<LHAPDF::PDF*> pdfs_3, const std::vector<LHAPDF::PDF*> pdfs_4, const std::vector<LHAPDF::PDF*> pdfs_5, const std::vector<LHAPDF::PDF*> pdfs_6) {
 
   if (!m_infoSwitch.m_noDataInfo){ // saved always (unless specifically requiring not to)
     m_runNumber             = eventInfo->runNumber();
@@ -318,7 +312,6 @@ void EventInfo::FillEvent( const xAOD::EventInfo* eventInfo, xAOD::TEvent* event
 				pdf_weight = -1;
 			}
               		m_pdfEventWeights_values_1.push_back(pdf_weight);
-			m_pdfEventWeights_names_1.push_back(pdfs_1.at(iPDF)->lhapdfID());
             	}
 		for (size_t iPDF = 0; iPDF < pdfs_2.size(); iPDF++){
                         double pdf_weight = LHAPDF::weightxxQ2( pdf_info.pdgId1, pdf_info.pdgId2, pdf_info.x1, pdf_info.x2, pdf_info.Q, pdfs_2.at(0), pdfs_2.at(iPDF) );
@@ -326,7 +319,6 @@ void EventInfo::FillEvent( const xAOD::EventInfo* eventInfo, xAOD::TEvent* event
                                 pdf_weight = -1;
                         }
                         m_pdfEventWeights_values_2.push_back(pdf_weight);
-                        m_pdfEventWeights_names_2.push_back(pdfs_2.at(iPDF)->lhapdfID());
                 }
 		for (size_t iPDF = 0; iPDF < pdfs_3.size(); iPDF++){
                         double pdf_weight = LHAPDF::weightxxQ2( pdf_info.pdgId1, pdf_info.pdgId2, pdf_info.x1, pdf_info.x2, pdf_info.Q, pdfs_3.at(0), pdfs_3.at(iPDF) );
@@ -334,7 +326,6 @@ void EventInfo::FillEvent( const xAOD::EventInfo* eventInfo, xAOD::TEvent* event
                                 pdf_weight = -1;
                         }
                         m_pdfEventWeights_values_3.push_back(pdf_weight);
-                        m_pdfEventWeights_names_3.push_back(pdfs_3.at(iPDF)->lhapdfID());
                 }
 		for (size_t iPDF = 0; iPDF < pdfs_4.size(); iPDF++){
                         double pdf_weight = LHAPDF::weightxxQ2( pdf_info.pdgId1, pdf_info.pdgId2, pdf_info.x1, pdf_info.x2, pdf_info.Q, pdfs_4.at(0), pdfs_4.at(iPDF) );
@@ -342,11 +333,21 @@ void EventInfo::FillEvent( const xAOD::EventInfo* eventInfo, xAOD::TEvent* event
                                 pdf_weight = -1;
                         }
                         m_pdfEventWeights_values_4.push_back(pdf_weight);
-                        m_pdfEventWeights_names_4.push_back(pdfs_4.at(iPDF)->lhapdfID());
                 }
-
-
-
+		for (size_t iPDF = 0; iPDF < pdfs_5.size(); iPDF++){
+                        double pdf_weight = LHAPDF::weightxxQ2( pdf_info.pdgId1, pdf_info.pdgId2, pdf_info.x1, pdf_info.x2, pdf_info.Q, pdfs_5.at(0), pdfs_5.at(iPDF) );
+                        if (std::isnan(pdf_weight)){
+                                pdf_weight = -1;
+                        }
+                        m_pdfEventWeights_values_5.push_back(pdf_weight);
+                }
+		for (size_t iPDF = 0; iPDF < pdfs_6.size(); iPDF++){
+                        double pdf_weight = LHAPDF::weightxxQ2( pdf_info.pdgId1, pdf_info.pdgId2, pdf_info.x1, pdf_info.x2, pdf_info.Q, pdfs_6.at(0), pdfs_6.at(iPDF) );
+                        if (std::isnan(pdf_weight)){
+                                pdf_weight = -1;
+                        }
+                        m_pdfEventWeights_values_6.push_back(pdf_weight);
+                }
         }
       } else {
         m_mcEventWeights      = std::vector<float>{m_mcEventWeight};

@@ -127,7 +127,7 @@ public:
   TrigConf::xAODConfigTool*    m_trigConfTool;
   Trig::TrigDecisionTool*      m_trigDecTool;
 
-  void FillEvent( const xAOD::EventInfo* eventInfo, xAOD::TEvent* event = nullptr, const xAOD::VertexContainer* vertices = nullptr, const std::vector<LHAPDF::PDF*> pdfs_1 = {}, const std::vector<LHAPDF::PDF*> pdfs_2 = {}, const std::vector<LHAPDF::PDF*> pdfs_3 = {}, const std::vector<LHAPDF::PDF*> pdfs_4 = {} );
+  void FillEvent( const xAOD::EventInfo* eventInfo, xAOD::TEvent* event = nullptr, const xAOD::VertexContainer* vertices = nullptr, const std::vector<LHAPDF::PDF*> pdfs_1 = {}, const std::vector<LHAPDF::PDF*> pdfs_2 = {}, const std::vector<LHAPDF::PDF*> pdfs_3 = {}, const std::vector<LHAPDF::PDF*> pdfs_4 = {}, const std::vector<LHAPDF::PDF*> pdfs_5 = {}, const std::vector<LHAPDF::PDF*> pdfs_6 = {} );
 
   void FillTrigger( const xAOD::EventInfo* eventInfo );
   void FillJetTrigger();

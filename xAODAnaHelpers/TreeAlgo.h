@@ -114,6 +114,8 @@ protected:
   std::vector<LHAPDF::PDF*> m_pdfs_2;
   std::vector<LHAPDF::PDF*> m_pdfs_3;
   std::vector<LHAPDF::PDF*> m_pdfs_4;
+  std::vector<LHAPDF::PDF*> m_pdfs_5;
+  std::vector<LHAPDF::PDF*> m_pdfs_6;
 
 public:
 
